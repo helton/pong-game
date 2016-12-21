@@ -1,4 +1,4 @@
-const FPS = 30;
+const FPS = 50;
 
 //movements constants
 const TOP_TO_BOTTOM = 1;
@@ -15,7 +15,19 @@ const NET_LINE_WIDTH = 5
 
 let canvas;
 let context;
-let paddleLeftY;
+let net = {
+  color: "white"
+};
+let paddles = {
+  left: {
+    score: 0,
+    color: "gray"
+  },
+  right: {
+    score: 0,
+    color: "white"
+  }
+};
 let ball = {
   color: "yellow",
   position: {
@@ -29,6 +41,7 @@ let ball = {
   radius: 10,
   speed: 10
 };
+let paddle; //allow control both side (without AI)
 
 function setup() {
   canvas = document.getElementById("gameCanvas");
@@ -37,15 +50,20 @@ function setup() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
+  paddles.left.x = 0;
+  paddles.left.y = canvas.height / 2 - PADDLE_HEIGHT/2;
+  paddles.right.x = canvas.width - PADDLE_WIDTH;
+  paddles.right.y = canvas.height/2 - PADDLE_HEIGHT/2;
+
   ball.diameter = ball.radius * 2;
-  paddleLeftY = canvas.height / 2 - PADDLE_HEIGHT/2;
+  ballReset();
 
   canvas.addEventListener("mousemove", updatePaddleCoordinates);
 }
 
 function updatePaddleCoordinates(event) {
   let coord = getMouseCoordinates(event);
-  paddleLeftY = coord.y - PADDLE_HEIGHT/2;
+  paddle.y = coord.y - PADDLE_HEIGHT/2;
 }
 
 function getMouseCoordinates(event) {
@@ -55,6 +73,20 @@ function getMouseCoordinates(event) {
     x: event.clientX - rect.left - root.scrollLeft,
     y: event.clientY - rect.top - root.scrollTop
   };
+}
+
+function ballReset() {
+  flipBallDirectionHorizontally();
+  ball.position.x = canvas.width/2 - ball.radius;
+  ball.position.y = canvas.height/2 - ball.radius;
+}
+
+function flipBallDirectionHorizontally() {
+  ball.direction.x = ball.direction.x === LEFT_TO_RIGHT ? RIGHT_TO_LEFT : LEFT_TO_RIGHT;
+}
+
+function flipBallDirectionVertically() {
+  ball.direction.y = ball.direction.y === TOP_TO_BOTTOM ? BOTTOM_TO_TOP : TOP_TO_BOTTOM;
 }
 
 function drawRect(color, coord) {
@@ -69,24 +101,58 @@ function drawCircle(color, radius, centerCoord) {
   context.fill();
 }
 
+function hasCollisionWithPaddle(paddle) {
+  return ((ball.position.y >= paddle.y) &&
+          (ball.position.y <= (paddle.y + PADDLE_HEIGHT)) &&
+          ((ball.position.x - ball.radius <= PADDLE_WIDTH) ||
+           (ball.position.x + ball.radius >= paddles.right.x)));
+}
+
+function isOnTopEdge() {
+  return ball.position.y - ball.radius <= 0;
+}
+
+function isOnBottomEdge() {
+  return ball.position.y + ball.radius >= canvas.height;
+}
+
+function isOneEdgeVertically() {
+  return isOnTopEdge() || isOnBottomEdge();
+}
+
+function isOutOfBoundsOnLeft() {
+  return ball.position.x < 0;
+}
+
+function isOutOfBoundsOnRight() {
+  return ball.position.x > canvas.width;
+}
+
+function isOutOfBounds() {
+  return isOutOfBoundsOnLeft() || isOutOfBoundsOnRight();
+}
+
 function move() {
   //bouncing the ball, flipping the directions if necessary
-  if (ball.position.x < 0 || (ball.position.x + ball.diameter) > canvas.width) {
-    //doesn't change if direction is NO_MOVE
-    if (ball.direction.x === LEFT_TO_RIGHT)
-      ball.direction.x = RIGHT_TO_LEFT;
-    else if (ball.direction.x === RIGHT_TO_LEFT)
-      ball.direction.x = LEFT_TO_RIGHT;
+  if (hasCollisionWithPaddle(paddles.left) || hasCollisionWithPaddle(paddles.right)) {
+    flipBallDirectionHorizontally();
+  } else if (isOutOfBounds()) {
+      if (isOutOfBoundsOnLeft()) {
+        paddles.right.score++;
+      } else {
+        paddles.left.score++;
+      }
+      flipBallDirectionHorizontally();
+      ballReset();
   }
-  if (ball.position.y < 0 || (ball.position.y + ball.diameter) > canvas.height) {
-    //doesn't change if direction is NO_MOVE
-    if (ball.direction.y === TOP_TO_BOTTOM)
-      ball.direction.y = BOTTOM_TO_TOP;
-    else if (ball.direction.y === BOTTOM_TO_TOP)
-      ball.direction.y = TOP_TO_BOTTOM;
+  if (isOneEdgeVertically()) {
+    flipBallDirectionVertically();
   }
   ball.position.x += ball.speed * ball.direction.x;
   ball.position.y += ball.speed * ball.direction.y;
+
+  //choosing the paddle to control (temporary)
+  paddle = ball.position.x <= canvas.width/2 ? paddles.left : paddles.right;
 }
 
 function draw() {
@@ -100,7 +166,7 @@ function draw() {
 
   //net
   for (var i = 0; i < canvas.height/NET_LINE_HEIGHT; i += 2) {
-    drawRect("white", {
+    drawRect(net.color, {
       x: canvas.width/2 - NET_LINE_WIDTH/2,
       y: i * NET_LINE_HEIGHT,
       width: NET_LINE_WIDTH,
@@ -109,17 +175,17 @@ function draw() {
   }
 
   //left paddle
-  drawRect("white", {
-    x: 0,
-    y: paddleLeftY,
+  drawRect(paddles.left.color, {
+    x: paddles.left.x,
+    y: paddles.left.y,
     width: PADDLE_WIDTH,
     height: PADDLE_HEIGHT
   });
 
   //right paddle
-  drawRect("white", {
-    x: canvas.width - PADDLE_WIDTH,
-    y: canvas.height/2 - PADDLE_HEIGHT/2,
+  drawRect(paddles.right.color, {
+    x: paddles.right.x,
+    y: paddles.right.y,
     width: PADDLE_WIDTH,
     height: PADDLE_HEIGHT
   });
@@ -129,6 +195,10 @@ function draw() {
     x: ball.position.x,
     y: ball.position.y
   });
+
+  //Keeps the score on console (temporary)
+  console.log("LEFT: " + paddles.left.score);
+  console.log("RIGHT: " + paddles.right.score);
 }
 
 function update() {
