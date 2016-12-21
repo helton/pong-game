@@ -9,6 +9,8 @@ const NO_MOVE = 0;
 
 const PADDLE_HEIGHT = 100;
 const PADDLE_WIDTH = 10;
+const PADDLE_VELOCITY = 8;
+const PADDLE_PROXIMITY_PERCENTAGE = 75;
 
 const NET_LINE_HEIGHT = 10;
 const NET_LINE_WIDTH = 5
@@ -20,18 +22,16 @@ let net = {
 };
 let paddles = {
   left: {
-    score: 0,
     color: "gray"
   },
   right: {
-    score: 0,
     color: "white"
   }
 };
 let ball = {
   color: "yellow",
   position: {
-    x: 50,
+    x: 0,
     y: 0
   },
   direction: {
@@ -41,7 +41,20 @@ let ball = {
   radius: 10,
   speed: 10
 };
-let paddle; //allow control both side (without AI)
+let score = {
+  left: {
+    x: 0,
+    y: 0,
+    value: 0
+  },
+  right: {
+    x: 0,
+    y: 0,
+    value: 0
+  },
+  color: "yellow",
+  font: "15px Monaco"
+};
 
 function setup() {
   canvas = document.getElementById("gameCanvas");
@@ -55,6 +68,11 @@ function setup() {
   paddles.right.x = canvas.width - PADDLE_WIDTH;
   paddles.right.y = canvas.height/2 - PADDLE_HEIGHT/2;
 
+  score.left.x = canvas.width / 4;
+  score.left.y = canvas.height / 4;
+  score.right.x = 3 * canvas.width / 4;
+  score.right.y = canvas.height / 4;
+
   ball.diameter = ball.radius * 2;
   ballReset();
 
@@ -63,7 +81,7 @@ function setup() {
 
 function updatePaddleCoordinates(event) {
   let coord = getMouseCoordinates(event);
-  paddle.y = coord.y - PADDLE_HEIGHT/2;
+  paddles.left.y = coord.y - PADDLE_HEIGHT/2;
 }
 
 function getMouseCoordinates(event) {
@@ -76,7 +94,6 @@ function getMouseCoordinates(event) {
 }
 
 function ballReset() {
-  flipBallDirectionHorizontally();
   ball.position.x = canvas.width/2 - ball.radius;
   ball.position.y = canvas.height/2 - ball.radius;
 }
@@ -99,6 +116,12 @@ function drawCircle(color, radius, centerCoord) {
   context.beginPath();
   context.arc(centerCoord.x, centerCoord.y, radius, 0, Math.PI * 2, true);
   context.fill();
+}
+
+function drawText(color, font, text, coord) {
+  context.fillStyle = color;
+  context.font = font;
+  context.fillText(text, coord.x, coord.y);
 }
 
 function hasCollisionWithPaddle(paddle) {
@@ -132,15 +155,29 @@ function isOutOfBounds() {
   return isOutOfBoundsOnLeft() || isOutOfBoundsOnRight();
 }
 
-function move() {
-  //bouncing the ball, flipping the directions if necessary
+function moveRightPaddle() {
+  const paddleRightCenter = paddles.right.y + PADDLE_HEIGHT/2;
+  const paddleSpan = PADDLE_HEIGHT * ((100 - PADDLE_PROXIMITY_PERCENTAGE) / 100); //defines how to much closer should the paddle be without chasing the ball
+  if (paddleRightCenter < ball.position.y - paddleSpan) {
+    paddles.right.y += PADDLE_VELOCITY;
+  } else if (paddleRightCenter > ball.position.y + paddleSpan) {
+    paddles.right.y -= PADDLE_VELOCITY;
+  }
+}
+
+function moveBall() {
+  ball.position.x += ball.speed * ball.direction.x;
+  ball.position.y += ball.speed * ball.direction.y;
+}
+
+function checkCollision() {
   if (hasCollisionWithPaddle(paddles.left) || hasCollisionWithPaddle(paddles.right)) {
     flipBallDirectionHorizontally();
   } else if (isOutOfBounds()) {
       if (isOutOfBoundsOnLeft()) {
-        paddles.right.score++;
+        score.right.value++;
       } else {
-        paddles.left.score++;
+        score.left.value++;
       }
       flipBallDirectionHorizontally();
       ballReset();
@@ -148,11 +185,12 @@ function move() {
   if (isOneEdgeVertically()) {
     flipBallDirectionVertically();
   }
-  ball.position.x += ball.speed * ball.direction.x;
-  ball.position.y += ball.speed * ball.direction.y;
+}
 
-  //choosing the paddle to control (temporary)
-  paddle = ball.position.x <= canvas.width/2 ? paddles.left : paddles.right;
+function move() {
+  moveBall();
+  moveRightPaddle();
+  checkCollision();
 }
 
 function draw() {
@@ -196,9 +234,15 @@ function draw() {
     y: ball.position.y
   });
 
-  //Keeps the score on console (temporary)
-  console.log("LEFT: " + paddles.left.score);
-  console.log("RIGHT: " + paddles.right.score);
+  //score
+  drawText(score.color, score.font, "Score: " + score.left.value, {
+    x: score.left.x,
+    y: score.left.y
+  });
+  drawText(score.color, score.font, "Score: " + score.right.value, {
+    x: score.right.x,
+    y: score.right.y
+  });
 }
 
 function update() {
