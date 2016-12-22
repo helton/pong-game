@@ -9,8 +9,8 @@ const NO_MOVE = 0;
 
 const PADDLE_HEIGHT = 100;
 const PADDLE_WIDTH = 10;
-const PADDLE_VELOCITY = 8;
-const PADDLE_PROXIMITY_PERCENTAGE = 75;
+const PADDLE_VELOCITY = 15;
+const PADDLE_PROXIMITY_PERCENTAGE = 75; //how close should the right paddle be before moving
 const PADDLE_DEFLECTION_PERCENTAGE = 35; //percentage
 
 const NET_LINE_HEIGHT = 10;
@@ -98,16 +98,8 @@ function getMouseCoordinates(event) {
 }
 
 function ballReset() {
-  ball.position.x = canvas.width/2 - ball.radius;
-  ball.position.y = canvas.height/2 - ball.radius;
-}
-
-function flipBallDirectionHorizontally() {
-  ball.direction.x = ball.direction.x === LEFT_TO_RIGHT ? RIGHT_TO_LEFT : LEFT_TO_RIGHT;
-}
-
-function flipBallDirectionVertically() {
-  ball.direction.y = ball.direction.y === TOP_TO_BOTTOM ? BOTTOM_TO_TOP : TOP_TO_BOTTOM;
+  ball.position.x = canvas.width/2;
+  ball.position.y = canvas.height/2;
 }
 
 function drawRect(color, coord) {
@@ -128,80 +120,38 @@ function drawText(color, font, text, coord) {
   context.fillText(text, coord.x, coord.y);
 }
 
-function hasCollisionWithPaddle(paddle) {
-  return ((ball.position.y >= paddle.y) &&
-          (ball.position.y <= (paddle.y + PADDLE_HEIGHT)) &&
-          ((ball.position.x - ball.radius <= PADDLE_WIDTH) ||
-           (ball.position.x + ball.radius >= paddles.right.x)));
-}
-
-function isOnTopEdge() {
-  return ball.position.y - ball.radius <= 0;
-}
-
-function isOnBottomEdge() {
-  return ball.position.y + ball.radius >= canvas.height;
-}
-
-function isOneEdgeVertically() {
-  return isOnTopEdge() || isOnBottomEdge();
-}
-
-function isOutOfBoundsOnLeft() {
-  return ball.position.x < 0;
-}
-
-function isOutOfBoundsOnRight() {
-  return ball.position.x > canvas.width;
-}
-
-function isOutOfBounds() {
-  return isOutOfBoundsOnLeft() || isOutOfBoundsOnRight();
-}
-
-function moveRightPaddle() {
-  const paddleRightCenter = paddles.right.y + PADDLE_HEIGHT/2;
-  const paddleSpan = PADDLE_HEIGHT * ((100 - PADDLE_PROXIMITY_PERCENTAGE) / 100); //defines how to much closer should the paddle be without chasing the ball
-  if (paddleRightCenter < ball.position.y - paddleSpan) {
-    paddles.right.y += PADDLE_VELOCITY;
-  } else if (paddleRightCenter > ball.position.y + paddleSpan) {
-    paddles.right.y -= PADDLE_VELOCITY;
-  }
-}
-
-function moveBall() {
+function move() {
+  //moving ball
   ball.position.x += ball.speed.x * ball.direction.x;
   ball.position.y += ball.speed.y * ball.direction.y;
-}
 
-function checkCollision() {
-  if (hasCollisionWithPaddle(paddles.left) || hasCollisionWithPaddle(paddles.right)) {
-    if (hasCollisionWithPaddle(paddles.left)) {
-      const delta = ball.position.y - (paddles.left.position.y + PADDLE_HEIGHT/2);
-      ball.speed.y = delta * (PADDLE_DEFLECTION_PERCENTAGE / 100);
-    } else {
-      const delta = ball.position.y - (paddles.right.position.y + PADDLE_HEIGHT/2);
-      ball.speed.y = delta * (PADDLE_DEFLECTION_PERCENTAGE / 100);
-    }
-    flipBallDirectionHorizontally();
-  } else if (isOutOfBounds()) {
-      if (isOutOfBoundsOnLeft()) {
-        score.right.value++;
-      } else {
-        score.left.value++;
-      }
-      flipBallDirectionHorizontally();
+  //right paddle AI
+  const delta = PADDLE_HEIGHT * (100 - PADDLE_PROXIMITY_PERCENTAGE) / 100;
+  if (paddles.right.y + PADDLE_HEIGHT/2 < ball.position.y - delta) {
+    paddles.right.y += PADDLE_VELOCITY;
+  } else if (paddles.right.y + PADDLE_HEIGHT/2 > ball.position.y + delta) {
+    paddles.right.y -= PADDLE_VELOCITY;
+  }
+
+  //when reaches the edges, flip the ball, count the score
+  if (ball.position.x < 0) { //reach the left edge
+    ball.direction.x = ball.direction.x === LEFT_TO_RIGHT ? RIGHT_TO_LEFT : LEFT_TO_RIGHT;
+    //check if left paddle missed the ball. If so, right scores!
+    if (ball.position.y < paddles.left.y || ball.position.y > (paddles.left.y + PADDLE_HEIGHT)) {
+      score.right.value++;
       ballReset();
+    }
+  } else if (ball.position.x > canvas.width) { //reach the right edge
+    ball.direction.x = ball.direction.x === LEFT_TO_RIGHT ? RIGHT_TO_LEFT : LEFT_TO_RIGHT;
+    if (ball.position.y < paddles.right.y || ball.position.y > (paddles.right.y + PADDLE_HEIGHT)) {
+      score.left.value++;
+      ballReset();
+    }
+  } else if (ball.position.y < 0) { //reach the top edge
+    ball.direction.y = ball.direction.y === TOP_TO_BOTTOM ? BOTTOM_TO_TOP : TOP_TO_BOTTOM;
+  } else if (ball.position.y > canvas.height) { //reach the bottom edge
+    ball.direction.y = ball.direction.y === TOP_TO_BOTTOM ? BOTTOM_TO_TOP : TOP_TO_BOTTOM;
   }
-  if (isOneEdgeVertically()) {
-    flipBallDirectionVertically();
-  }
-}
-
-function move() {
-  moveBall();
-  moveRightPaddle();
-  checkCollision();
 }
 
 function draw() {
