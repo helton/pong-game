@@ -11,6 +11,7 @@ const PADDLE_HEIGHT = 100;
 const PADDLE_WIDTH = 10;
 const PADDLE_VELOCITY = 8;
 const PADDLE_PROXIMITY_PERCENTAGE = 75;
+const PADDLE_DEFLECTION_PERCENTAGE = 35; //percentage
 
 const NET_LINE_HEIGHT = 10;
 const NET_LINE_WIDTH = 5
@@ -39,7 +40,10 @@ let ball = {
     y: TOP_TO_BOTTOM
   },
   radius: 10,
-  speed: 10
+  speed: {
+    x: 10,
+    y: 10
+  }
 };
 let score = {
   left: {
@@ -166,12 +170,19 @@ function moveRightPaddle() {
 }
 
 function moveBall() {
-  ball.position.x += ball.speed * ball.direction.x;
-  ball.position.y += ball.speed * ball.direction.y;
+  ball.position.x += ball.speed.x * ball.direction.x;
+  ball.position.y += ball.speed.y * ball.direction.y;
 }
 
 function checkCollision() {
   if (hasCollisionWithPaddle(paddles.left) || hasCollisionWithPaddle(paddles.right)) {
+    if (hasCollisionWithPaddle(paddles.left)) {
+      const delta = ball.position.y - (paddles.left.position.y + PADDLE_HEIGHT/2);
+      ball.speed.y = delta * (PADDLE_DEFLECTION_PERCENTAGE / 100);
+    } else {
+      const delta = ball.position.y - (paddles.right.position.y + PADDLE_HEIGHT/2);
+      ball.speed.y = delta * (PADDLE_DEFLECTION_PERCENTAGE / 100);
+    }
     flipBallDirectionHorizontally();
   } else if (isOutOfBounds()) {
       if (isOutOfBoundsOnLeft()) {
