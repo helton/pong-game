@@ -14,7 +14,9 @@ const PADDLE_PROXIMITY_PERCENTAGE = 75; //how close should the right paddle be b
 const PADDLE_DEFLECTION_PERCENTAGE = 35; //percentage
 
 const NET_LINE_HEIGHT = 10;
-const NET_LINE_WIDTH = 5
+const NET_LINE_WIDTH = 5;
+
+const WINNING_SCORE = 3;
 
 let canvas;
 let context;
@@ -49,16 +51,19 @@ let score = {
   left: {
     x: 0,
     y: 0,
-    value: 0
+    value: 0,
+    winner: false
   },
   right: {
     x: 0,
     y: 0,
-    value: 0
+    value: 0,
+    winner: false
   },
   color: "yellow",
   font: "15px Monaco"
 };
+let showingWinScreen = false;
 
 function setup() {
   canvas = document.getElementById("gameCanvas");
@@ -81,6 +86,7 @@ function setup() {
   ballReset();
 
   canvas.addEventListener("mousemove", updatePaddleCoordinates);
+  canvas.addEventListener("click", () => showingWinScreen = false);
 }
 
 function updatePaddleCoordinates(event) {
@@ -100,6 +106,12 @@ function getMouseCoordinates(event) {
 function ballReset() {
   ball.position.x = canvas.width/2;
   ball.position.y = canvas.height/2;
+
+   if (score.left.value >= WINNING_SCORE || score.right.value >= WINNING_SCORE) {
+     [score.left.winner, score.right.winner] = [score.left.value >= WINNING_SCORE, score.right.value >= WINNING_SCORE];
+     [score.left.value, score.right.value] = [0, 0];
+     showingWinScreen = true;
+   }
 }
 
 function drawRect(color, coord) {
@@ -117,10 +129,14 @@ function drawCircle(color, radius, centerCoord) {
 function drawText(color, font, text, coord) {
   context.fillStyle = color;
   context.font = font;
+  context.textAlign = "center";
   context.fillText(text, coord.x, coord.y);
 }
 
 function move() {
+  if (showingWinScreen)
+    return;
+
   //moving ball
   ball.position.x += ball.speed.x * ball.direction.x;
   ball.position.y += ball.speed.y * ball.direction.y;
@@ -135,15 +151,20 @@ function move() {
 
   //when reaches the edges, flip the ball, count the score
   if (ball.position.x < 0) { //reach the left edge
-    ball.direction.x = ball.direction.x === LEFT_TO_RIGHT ? RIGHT_TO_LEFT : LEFT_TO_RIGHT;
-    //check if left paddle missed the ball. If so, right scores!
-    if (ball.position.y < paddles.left.y || ball.position.y > (paddles.left.y + PADDLE_HEIGHT)) {
+    if (ball.position.y >= paddles.left.y && ball.position.y <= (paddles.left.y + PADDLE_HEIGHT)) {
+      ball.direction.x = ball.direction.x === LEFT_TO_RIGHT ? RIGHT_TO_LEFT : LEFT_TO_RIGHT;
+      const delta = ball.position.y - (paddles.left.y + PADDLE_HEIGHT/2);
+      ball.speed.y = delta * (PADDLE_DEFLECTION_PERCENTAGE / 100);
+    } else {
       score.right.value++;
       ballReset();
     }
   } else if (ball.position.x > canvas.width) { //reach the right edge
-    ball.direction.x = ball.direction.x === LEFT_TO_RIGHT ? RIGHT_TO_LEFT : LEFT_TO_RIGHT;
-    if (ball.position.y < paddles.right.y || ball.position.y > (paddles.right.y + PADDLE_HEIGHT)) {
+    if (ball.position.y >= paddles.right.y && ball.position.y <= (paddles.right.y + PADDLE_HEIGHT)) {
+      ball.direction.x = ball.direction.x === LEFT_TO_RIGHT ? RIGHT_TO_LEFT : LEFT_TO_RIGHT;
+      const delta = ball.position.y - (paddles.right.y + PADDLE_HEIGHT/2);
+      ball.speed.y = delta * (PADDLE_DEFLECTION_PERCENTAGE / 100);
+    } else {
       score.left.value++;
       ballReset();
     }
@@ -162,6 +183,15 @@ function draw() {
     width: canvas.width,
     height: canvas.height
   });
+
+  if (showingWinScreen) {
+    const message = score.left.winner ? "You win!" : "Computer wins!";
+    drawText(score.color, score.font, `${message} Click to continue...`, {
+      x: canvas.width/2,
+      y: canvas.height/2
+    });
+    return;
+  }
 
   //net
   for (var i = 0; i < canvas.height/NET_LINE_HEIGHT; i += 2) {
