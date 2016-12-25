@@ -35,7 +35,7 @@ let ball = {
     x: LEFT_TO_RIGHT,
     y: TOP_TO_BOTTOM
   },
-  radius: 50,
+  radius: PADDLE_WIDTH,
   speed: {
     x: INITIAL_BALL_SPEED,
     y: INITIAL_BALL_SPEED
@@ -262,14 +262,6 @@ function calculateBallPositionAndSpeed(player) {
   ball.speed.x += ball.speed.x * VELOCITY_INCREASE_RATE;
 }
 
-function isCollisionOnTheLeft() {
-  return ball.position.x < 0;
-}
-
-function isCollisionOnTheRight() {
-  return ball.position.x > canvas.width;
-}
-
 function isCollisionAtTheTop() {
   return ball.position.y - ball.radius < 0;
 }
@@ -278,29 +270,45 @@ function isCollisionAtTheBottom() {
   return ball.position.y + ball.radius > canvas.height;
 }
 
-function didPlayerDefend(player) {
-  return ball.position.y >= player.paddle.position.y &&
-         ball.position.y <= (player.paddle.position.y + PADDLE_HEIGHT);
+function isVerticalCollision() {
+  return isCollisionAtTheTop() || isCollisionAtTheBottom();
 }
 
-function getPlayerEnemy(player) {
-  return player === players.left ? players.right : players.left;
+function didPlayerDefendVertically(player) {
+  return ball.position.y >= player.paddle.position.y && ball.position.y <= player.paddle.position.y + PADDLE_HEIGHT;
 }
 
-function checkBallCollisionWithPlayer(player) {
-  if (didPlayerDefend(player))
-    calculateBallPositionAndSpeed(player);
-  else
-    playerScored(getPlayerEnemy(player));
+function didLeftPlayerDefend() {
+  return (ball.position.x - ball.radius <= players.left.paddle.position.x + PADDLE_WIDTH) &&
+         didPlayerDefendVertically(players.left);
+}
+
+function didRightPlayerDefend() {
+  return (ball.position.x + ball.radius >= players.right.paddle.position.x) &&
+         didPlayerDefendVertically(players.right);
+}
+
+function didLeftPlayerMissed() {
+  return (ball.position.x - ball.radius <= 0) &&
+         !didPlayerDefendVertically(players.left);
+}
+
+function didRightPlayerMissed() {
+  return (ball.position.x + ball.radius >= canvas.width) &&
+         !didPlayerDefendVertically(players.right);
 }
 
 function checkBallCollision() {
-  if (isCollisionOnTheLeft())
-    checkBallCollisionWithPlayer(players.left);
-  else if (isCollisionOnTheRight())
-    checkBallCollisionWithPlayer(players.right);
-  else if (isCollisionAtTheTop() || isCollisionAtTheBottom())
+  if (isVerticalCollision())
     flipBallDirectionVertically();
+  else if (didLeftPlayerDefend())
+    calculateBallPositionAndSpeed(players.left);
+  else if (didLeftPlayerMissed())
+    playerScored(players.right);
+  else if (didRightPlayerDefend())
+    calculateBallPositionAndSpeed(players.right);
+  else if (didRightPlayerMissed())
+    playerScored(players.left);
 }
 
 function move() {
