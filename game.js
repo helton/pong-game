@@ -13,6 +13,8 @@ const PADDLE_PROXIMITY_PERCENTAGE = 75; //percentage - how close should the righ
 const PADDLE_DEFLECTION_PERCENTAGE = 35; //percentage
 
 const WINNING_SCORE = 10; //points
+const INITIAL_BALL_SPEED = 5;
+const VELOCITY_INCREASE_RATE = 0.1;
 
 let canvas;
 let context;
@@ -35,8 +37,8 @@ let ball = {
   },
   radius: 10,
   speed: {
-    x: 5,
-    y: 5
+    x: INITIAL_BALL_SPEED,
+    y: INITIAL_BALL_SPEED
   }
 };
 let players = {
@@ -106,7 +108,6 @@ let screen = {
     font: "50px Monaco"
   }
 };
-let steps = 0;
 let showingWinScreen = false;
 
 function setup() {
@@ -156,7 +157,6 @@ function checkWinner() {
   if (players.left.score.value >= WINNING_SCORE || players.right.score.value >= WINNING_SCORE) {
    [players.left.winner, players.right.winner] = [players.left.score.value >= WINNING_SCORE, players.right.score.value >= WINNING_SCORE];
    [players.left.score.value, players.right.score.value] = [0, 0];
-   steps = 0;
    showingWinScreen = true;
   }
 }
@@ -164,6 +164,7 @@ function checkWinner() {
 function ballReset() {
   ball.position.x = canvas.width/2;
   ball.position.y = canvas.height/2;
+  [ball.speed.x, ball.speed.y] = [INITIAL_BALL_SPEED, INITIAL_BALL_SPEED];
   checkWinner();
 }
 
@@ -208,6 +209,7 @@ function move() {
       ball.direction.x = ball.direction.x === LEFT_TO_RIGHT ? RIGHT_TO_LEFT : LEFT_TO_RIGHT;
       const delta = ball.position.y - (players.left.paddle.position.y + PADDLE_HEIGHT/2);
       ball.speed.y = delta * (PADDLE_DEFLECTION_PERCENTAGE / 100);
+      ball.speed.x += ball.speed.x * VELOCITY_INCREASE_RATE;
     } else {
       players.right.score.value++;
       ballReset();
@@ -217,6 +219,7 @@ function move() {
       ball.direction.x = ball.direction.x === LEFT_TO_RIGHT ? RIGHT_TO_LEFT : LEFT_TO_RIGHT;
       const delta = ball.position.y - (players.right.paddle.position.y + PADDLE_HEIGHT/2);
       ball.speed.y = delta * (PADDLE_DEFLECTION_PERCENTAGE / 100);
+      ball.speed.x += ball.speed.x * VELOCITY_INCREASE_RATE;
     } else {
       players.left.score.value++;
       ballReset();
@@ -228,25 +231,16 @@ function move() {
   }
 }
 
-function draw() {
-  //screen background
+function drawBackground() {
   drawRect(screen.default.color, {
     x: 0,
     y: 0,
     width: canvas.width,
     height: canvas.height
   });
+}
 
-  if (showingWinScreen) {
-    const winner = players.left.winner ? players.left : players.right;
-    drawText(screen.winner.color, screen.winner.font, `${winner.name.value} won! Click to continue...`, {
-      x: canvas.width/2,
-      y: canvas.height/2
-    });
-    return;
-  }
-
-  //net
+function drawNet() {
   for (var i = 0; i < canvas.height/net.segment.height; i += 2) {
     drawRect(net.color, {
       x: canvas.width/2 - net.segment.width/2,
@@ -255,48 +249,72 @@ function draw() {
       height: net.segment.height
     });
   }
+}
 
-  //left paddle
-  drawRect(players.left.paddle.color, {
-    x: players.left.paddle.position.x,
-    y: players.left.paddle.position.y,
+function drawPaddle(paddle) {
+  drawRect(paddle.color, {
+    x: paddle.position.x,
+    y: paddle.position.y,
     width: PADDLE_WIDTH,
     height: PADDLE_HEIGHT
   });
+}
 
-  //right paddle
-  drawRect(players.right.paddle.color, {
-    x: players.right.paddle.position.x,
-    y: players.right.paddle.position.y,
-    width: PADDLE_WIDTH,
-    height: PADDLE_HEIGHT
-  });
+function drawPaddles() {
+  drawPaddle(players.left.paddle);
+  drawPaddle(players.right.paddle);
+}
 
-  //ball
+function drawBall() {
   drawCircle("yellow", ball.radius, {
     x: ball.position.x,
     y: ball.position.y
   });
+}
 
-  //score
-  drawText(players.left.score.color, players.left.score.font, players.left.score.value, {
-    x: players.left.score.position.x,
-    y: players.left.score.position.y
+function drawScore(score) {
+  drawText(score.color, score.font, score.value, {
+    x: score.position.x,
+    y: score.position.y
   });
-  drawText(players.right.score.color, players.right.score.font, players.right.score.value, {
-    x: players.right.score.position.x,
-    y: players.right.score.position.y
-  });
+}
 
-  //player names
-  drawText(players.left.name.color, players.left.name.font, players.left.name.value, {
-    x: players.left.name.position.x,
-    y: players.left.name.position.y
+function drawScores() {
+  drawScore(players.left.score);
+  drawScore(players.right.score);
+}
+
+function drawPlayerName(name) {
+  drawText(name.color, name.font, name.value, {
+    x: name.position.x,
+    y: name.position.y
   });
-  drawText(players.right.name.color, players.right.name.font, players.right.name.value, {
-    x: players.right.name.position.x,
-    y: players.right.name.position.y
+}
+
+function drawPlayerNames() {
+  drawPlayerName(players.left.name);
+  drawPlayerName(players.right.name);
+}
+
+function drawWinnerScreen() {
+  const winner = players.left.winner ? players.left : players.right;
+  drawText(screen.winner.color, screen.winner.font, `${winner.name.value} won! Click to continue...`, {
+    x: canvas.width/2,
+    y: canvas.height/2
   });
+}
+
+function draw() {
+  drawBackground();
+  if (showingWinScreen) {
+    drawWinnerScreen();
+  } else {
+    drawNet();
+    drawPaddles();
+    drawBall();
+    drawScores();
+    drawPlayerNames();
+  }
 }
 
 function update() {
