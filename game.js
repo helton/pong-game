@@ -35,7 +35,7 @@ let ball = {
     x: LEFT_TO_RIGHT,
     y: TOP_TO_BOTTOM
   },
-  radius: 10,
+  radius: 50,
   speed: {
     x: INITIAL_BALL_SPEED,
     y: INITIAL_BALL_SPEED
@@ -271,11 +271,11 @@ function isCollisionOnTheRight() {
 }
 
 function isCollisionAtTheTop() {
-  return ball.position.y < 0;
+  return ball.position.y - ball.radius < 0;
 }
 
 function isCollisionAtTheBottom() {
-  return ball.position.y > canvas.height;
+  return ball.position.y + ball.radius > canvas.height;
 }
 
 function didPlayerDefend(player) {
