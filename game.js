@@ -103,6 +103,10 @@ let screen = {
   default: {
     color: "black"
   },
+  gameOver: {
+    color: "yellow",
+    font: "60px Monaco"
+  },
   winner: {
     color: "white",
     font: "50px Monaco"
@@ -374,9 +378,13 @@ function drawPlayerNames() {
 }
 
 function drawGameOverScreen() {
+  drawText(screen.gameOver.color, screen.gameOver.font, `Game Over!`, {
+    x: canvas.width / 2,
+    y: 1/2 * canvas.height
+  });
   drawText(screen.winner.color, screen.winner.font, `${getWinner().name.value} won! Click to continue...`, {
     x: canvas.width / 2,
-    y: canvas.height / 2
+    y: 3/4 * canvas.height
   });
 }
 
